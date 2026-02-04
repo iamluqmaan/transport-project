@@ -12,7 +12,7 @@ import { updateCommissionRate } from "@/app/actions/finance";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
-  rate: z.number().min(0, "Rate cannot be negative").max(100, "Rate cannot exceed 100%"),
+  rate: z.coerce.number().min(0, "Rate cannot be negative").max(100, "Rate cannot exceed 100%"),
 });
 
 interface CommissionParamsFormProps {
@@ -21,7 +21,9 @@ interface CommissionParamsFormProps {
 
 export default function CommissionParamsForm({ currentRate }: CommissionParamsFormProps) {
   const { toast } = useToast();
-  const form = useForm<z.infer<typeof formSchema>>({
+
+
+  const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       rate: currentRate,
@@ -67,7 +69,8 @@ export default function CommissionParamsForm({ currentRate }: CommissionParamsFo
                         type="number" 
                         step="0.1" 
                         {...field} 
-                        onChange={e => field.onChange(e.target.valueAsNumber)}
+                        value={field.value as number}
+                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
                         className="w-32" 
                     />
                     <span className="text-sm text-gray-500">%</span>
