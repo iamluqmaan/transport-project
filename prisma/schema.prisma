@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  COMPANY_ADMIN
+  CUSTOMER
+}
+
+enum VehicleType {
+  BUS
+  MINI_BUS
+  LUXURY_COACH
+  SIENNA
+  HUMMER_BUS
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String?   // Hashed, optional if using OAuth provider later
+  role          Role      @default(CUSTOMER)
+  companyId     String?   
+  
+  // Relations
+  bookings      Booking[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model TransportCompany {
+  id          String   @id @default(cuid())
+  name        String
+  logo        String?
+  description String?
+  contactInfo String
+  isActive    Boolean  @default(false) // Admin approval needed
+  
+  // Relations
+  vehicles    Vehicle[]
+  routes      Route[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  type        VehicleType 
+  plateNumber String
+  capacity    Int
+  
+  companyId   String
+  company     TransportCompany @relation(fields: [companyId], references: [id])
+  
+  // Relations
+  routes      Route[] // A vehicle can be assigned to multiple routes over time (simplified)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Route {
+  id              String   @id @default(cuid())
+  originState     String
+  originCity      String
+  destinationState String
+  destinationCity String
+  price           Float
+  departureTime   DateTime 
+  estimatedDuration Int? // In minutes
+
+  companyId       String
+  company         TransportCompany @relation(fields: [companyId], references: [id])
+  
+  vehicleId       String
+  vehicle         Vehicle @relation(fields: [vehicleId], references: [id])
+  
+  // Relations
+  bookings        Booking[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Booking {
+  id            String      @id @default(cuid())
+  status        BookingStatus @default(PENDING)
+  seatNumber    String?
+  totalAmount   Float
+  paymentRef    String?     // Paystack/Flutterwave Reference
+  
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  
+  routeId       String
+  route         Route       @relation(fields: [routeId], references: [id])
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
