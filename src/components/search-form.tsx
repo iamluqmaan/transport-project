@@ -29,50 +29,61 @@ export function SearchForm() {
   };
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow-2xl w-full max-w-4xl flex flex-col md:flex-row gap-4 items-center">
-        <div className="flex-1 w-full relative">
-            <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+    <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col lg:flex-row gap-4 items-center relative z-20">
+        <div className="flex-1 w-full relative group">
+            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
             <Input 
                 placeholder="Traveling From (e.g. Lagos)" 
-                className="pl-10 h-12 text-lg" 
+                className="pl-12 h-14 text-lg border-gray-200 focus:border-primary focus:ring-primary rounded-xl" 
                 value={from}
                 onChange={(e) => setFrom(e.target.value)}
             />
         </div>
-        <div className="hidden md:block text-gray-400">
+        
+        <div className="hidden lg:block text-gray-300">
             <ArrowRight className="h-6 w-6" />
         </div>
-            <div className="flex-1 w-full relative">
-            <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+        <div className="lg:hidden text-gray-300 transform rotate-90">
+            <ArrowRight className="h-6 w-6" />
+        </div>
+
+        <div className="flex-1 w-full relative group">
+            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
             <Input 
                 placeholder="Traveling To (e.g. Abuja)" 
-                className="pl-10 h-12 text-lg"
+                className="pl-12 h-14 text-lg border-gray-200 focus:border-primary focus:ring-primary rounded-xl"
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
             />
         </div>
-            <div className="flex-1 w-full relative">
-            <Calendar className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+        
+        <div className="flex-1 w-full relative group">
+            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
             <Input 
                 type="date" 
-                className="pl-10 h-12 text-lg" 
+                className="pl-12 h-14 text-lg border-gray-200 focus:border-primary focus:ring-primary rounded-xl w-full block" 
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
             />
         </div>
+
         <Button 
             size="lg" 
-            className="w-full md:w-auto h-12 px-8 text-lg"
+            className="w-full lg:w-auto h-14 px-8 text-lg rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
             onClick={handleSearch}
             disabled={isSearching}
         >
             {isSearching ? (
                 <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     Searching...
                 </>
             ) : (
-                "Search"
+                <>
+                    <Search className="mr-2 h-5 w-5" />
+                    Search
+                </>
             )}
         </Button>
     </div>
