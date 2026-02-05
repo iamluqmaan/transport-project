@@ -7,7 +7,7 @@ import {
   LayoutDashboard, 
   Building2, 
   Map, 
-  LogOut,
+  Home,
   Users,
   Ticket,
   Banknote,
@@ -76,11 +76,13 @@ export function AdminLayoutWrapper({ children, userRole }: AdminLayoutWrapperPro
   return (
     <div className="flex min-h-screen bg-gray-100">
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b z-30 flex items-center justify-between px-4 shadow-sm">
-        <div className="font-bold text-lg text-primary">Admin Panel</div>
-        <Button variant="ghost" size="icon" onClick={toggleSidebar}>
-          {isSidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </Button>
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b z-50 flex items-center justify-between px-4 shadow-sm">
+        <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={toggleSidebar}>
+            {isSidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </Button>
+            <div className="font-bold text-lg text-primary">Admin Panel</div>
+        </div>
       </div>
 
       {/* Overlay for mobile */}
@@ -139,9 +141,9 @@ export function AdminLayoutWrapper({ children, userRole }: AdminLayoutWrapperPro
         </nav>
         
         <div className="absolute bottom-0 w-full p-4 border-t bg-white">
-           <Link href="/" className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-            <LogOut className="h-5 w-5" />
-            Exit to App
+           <Link href="/" className="flex items-center gap-3 px-4 py-3 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+            <Home className="h-5 w-5" />
+            Return to Homepage
           </Link>
         </div>
       </aside>

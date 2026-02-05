@@ -73,6 +73,11 @@ export function Navbar() {
   // NOTE: In Next.js App Router client components, we should use usePathname from navigation
   // But I am using window.location above which is not reactive. I need to import usePathname.
   
+  // Hide Navbar on admin pages to avoid double header
+  if (pathname.startsWith('/admin')) {
+      return null;
+  }
+
   return (
     <header className="border-b bg-white top-0 sticky z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
