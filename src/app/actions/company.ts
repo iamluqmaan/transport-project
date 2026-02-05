@@ -4,7 +4,9 @@ import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import Route from "@/models/Route";
 import Vehicle from "@/models/Vehicle";
+import Booking from "@/models/Booking";
 import RouteTemplate from "@/models/RouteTemplate";
+import { isSameDay } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -173,13 +175,43 @@ export async function updateCompanyRoute(routeId: string, formData: FormData) {
             return { error: "Route not found or unauthorized" };
         }
 
+        const newDepartureTime = new Date(data.departureTime as string);
+        const oldDepartureTime = new Date(route.departureTime);
+
+        // Check if the DAY has changed. If the day changes, we assume it's a new trip (recycling)
+        // and we reset the bookings. If it's the same day (even if time changed), we keep bookings.
+        if (!isSameDay(newDepartureTime, oldDepartureTime)) {
+             // If we are moving a route to a new date, we assume old bookings are for the *old* trip.
+             // We mark them as COMPLETED to free up seats for the new trip date.
+             // We only touch pending/confirmed bookings.
+             await Booking.updateMany(
+                { 
+                    routeId: route._id, 
+                    status: { $in: ['PENDING', 'CONFIRMED'] } 
+                },
+                { status: 'COMPLETED' }
+             );
+        } else {
+            // Logic: If date is NOT changing, we must ensure new capacity >= existing active bookings
+            const activeBookingsCount = await Booking.countDocuments({
+                routeId: route._id,
+                status: { $in: ['CONFIRMED'] } 
+            });
+
+            if (Number(data.vehicleCapacity) < activeBookingsCount) {
+                return { 
+                    error: `Cannot reduce capacity to ${data.vehicleCapacity}. There are already ${activeBookingsCount} active bookings.` 
+                };
+            }
+        }
+
         await Route.findByIdAndUpdate(routeId, {
             originCity: data.originCity,
             originState: data.originState,
             destinationCity: data.destinationCity,
             destinationState: data.destinationState,
             price: Number(data.price),
-            departureTime: new Date(data.departureTime as string),
+            departureTime: newDepartureTime,
         });
 
         // Update vehicle as well

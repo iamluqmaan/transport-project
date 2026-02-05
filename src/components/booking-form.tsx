@@ -29,10 +29,11 @@ interface RouteData {
 
 interface BookingFormProps {
   route: RouteData;
-  userId?: string; 
+  userId?: string;
+  availableSeats: number; 
 }
 
-export function BookingForm({ route, userId }: BookingFormProps) {
+export function BookingForm({ route, userId, availableSeats }: BookingFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [seats, setSeats] = useState(1);
@@ -45,6 +46,10 @@ export function BookingForm({ route, userId }: BookingFormProps) {
   // Let's assume the user is logged in for simplicity, or we show a login prompt.
   // Actually, I'll redirect to login if no userId is passed.
 
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestEmergencyContact, setGuestEmergencyContact] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CARD" | "BANK_TRANSFER">("CARD");
   const [proofOfPayment, setProofOfPayment] = useState<string | null>(null);
 
@@ -63,8 +68,10 @@ export function BookingForm({ route, userId }: BookingFormProps) {
 
   const handleBooking = async () => {
     if (!userId) {
-      router.push(`/login?callbackUrl=/routes/${route.id}/booking`);
-      return;
+        if (!guestName || !guestEmail || !guestPhone || !guestEmergencyContact) {
+            setError("Please fill in all guest details.");
+            return;
+        }
     }
 
     if (paymentMethod === "BANK_TRANSFER" && !proofOfPayment) {
@@ -83,7 +90,11 @@ export function BookingForm({ route, userId }: BookingFormProps) {
         },
         body: JSON.stringify({
           routeId: route.id,
-          userId: userId,
+          userId: userId || null, // Allow null for guest
+          guestName: !userId ? guestName : undefined,
+          guestEmail: !userId ? guestEmail : undefined,
+          guestPhone: !userId ? guestPhone : undefined,
+          guestEmergencyContact: !userId ? guestEmergencyContact : undefined,
           amount: totalAmount,
           seats: seats,
           paymentMethod: paymentMethod, 
@@ -130,14 +141,53 @@ export function BookingForm({ route, userId }: BookingFormProps) {
         </div>
       </div>
 
+      {!userId && (
+        <div className="mb-6 border-b pb-6">
+            <h4 className="font-semibold mb-3">Guest Details</h4>
+            <div className="space-y-3">
+                <Input 
+                    placeholder="Full Name" 
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                />
+                 <Input 
+                    placeholder="Email Address" 
+                    type="email"
+                    value={guestEmail}
+                    onChange={(e) => setGuestEmail(e.target.value)}
+                />
+                 <Input 
+                    placeholder="Phone Number" 
+                    type="tel"
+                    value={guestPhone}
+                    onChange={(e) => setGuestPhone(e.target.value)}
+                />
+                 <Input 
+                    placeholder="Next of Kin / Emergency Contact" 
+                    type="tel"
+                    value={guestEmergencyContact}
+                    onChange={(e) => setGuestEmergencyContact(e.target.value)}
+                />
+            </div>
+        </div>
+      )}
+
       <div className="border-t pt-4 mb-6">
-          <label className="block text-sm font-medium mb-2">Number of Seats</label>
+          <div className="flex justify-between mb-2">
+            <label className="block text-sm font-medium">Number of Seats</label>
+            <span className="text-sm text-gray-500">{availableSeats} seats available</span>
+          </div>
           <Input 
             type="number" 
             min={1} 
-            max={route.vehicle.capacity} 
+            max={availableSeats} 
             value={seats} 
-            onChange={(e) => setSeats(parseInt(e.target.value) || 1)}
+            onChange={(e) => {
+                const val = parseInt(e.target.value) || 0;
+                // Cap value at availableSeats
+                if (val > availableSeats) setSeats(availableSeats);
+                else setSeats(val);
+            }}
             className="mb-4"
           />
           

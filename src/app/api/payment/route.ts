@@ -12,11 +12,16 @@ import { distributeBookingRevenue } from "@/lib/workflow-utils";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { routeId, userId, amount, seats, paymentMethod = "CARD", proofOfPayment } = body;
+    const { routeId, userId, amount, seats, paymentMethod = "CARD", proofOfPayment, guestName, guestEmail, guestPhone, guestEmergencyContact } = body;
 
     // 1. Validate inputs (basic)
-    if (!routeId || !userId || !amount) {
+    if (!routeId || !amount) {
         return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+    
+    // Require either userId or guest details
+    if (!userId && (!guestName || !guestEmail || !guestPhone || !guestEmergencyContact)) {
+         return NextResponse.json({ error: "User ID or Guest Details required" }, { status: 400 });
     }
 
     await connectDB();
@@ -59,7 +64,11 @@ export async function POST(req: Request) {
     }
 
     const newBooking = await Booking.create({
-        userId,
+        userId: userId || undefined, // undefined if guest
+        customerName: guestName,
+        customerEmail: guestEmail,
+        customerPhone: guestPhone,
+        emergencyContact: guestEmergencyContact,
         routeId,
         totalAmount: amount,
         serviceFee,
@@ -92,15 +101,14 @@ export async function POST(req: Request) {
 
     // 3. Send Notifications
     
-    // 3. Send Notifications
-    
-    // A. Email to Customer
-    const customerName = booking.userId?.name || "Customer";
-    const customerEmail = booking.userId?.email;
+    // A. Notification to Customer
+    const finalCustomerName = booking.userId?.name || guestName || "Customer";
+    const finalCustomerEmail = booking.userId?.email || guestEmail;
+    const finalCustomerPhone = booking.userId?.phoneNumber || guestPhone;
     const companyName = company?.name || "Transport Company";
 
     const emailHtml = generateBookingEmail({
-        customerName,
+        customerName: finalCustomerName,
         originCity: routeData.originCity,
         destinationCity: routeData.destinationCity,
         companyName: companyName,
@@ -111,15 +119,26 @@ export async function POST(req: Request) {
         status: bookingStatus === BookingStatus.CONFIRMED ? 'CONFIRMED' : 'PENDING'
     }, bookingStatus === BookingStatus.CONFIRMED ? 'CONFIRMATION' : 'PENDING');
 
-    if (customerEmail) {
+    const { sendSMS } = await import("@/lib/sms");
+
+    // Send Email & SMS to Customer
+    if (finalCustomerEmail) {
         const subject = bookingStatus === BookingStatus.CONFIRMED 
             ? "Booking Confirmed - Ticket Enclosed - TransportNG" 
             : "Booking Received - Verification Pending - TransportNG";
         
-        await sendEmail(customerEmail, subject, emailHtml);
+        await sendEmail(finalCustomerEmail, subject, emailHtml);
+    }
+    
+    if (finalCustomerPhone) {
+        const smsMessage = bookingStatus === BookingStatus.CONFIRMED
+            ? `Booking Confirmed! ${routeData.originCity} to ${routeData.destinationCity} on ${new Date(routeData.departureTime).toDateString()}. Seat: ${booking.seatNumber}. Ref: ${booking._id.toString().slice(-6)}`
+            : `Booking Received! Trip: ${routeData.originCity} to ${routeData.destinationCity}. Status: Pending Verification. Ref: ${booking._id.toString().slice(-6)}`;
+        
+        await sendSMS(finalCustomerPhone, smsMessage);
     }
 
-    // B. Email to Company (Notification)
+    // B. Notification to Company
     if (company && company.contactInfo) {
         const companyEmail = company.contactInfo.includes("@") ? company.contactInfo : `admin+${company.name.replace(/\s/g, '').toLowerCase()}@transportng.com`;
         
@@ -132,16 +151,24 @@ export async function POST(req: Request) {
 
         ${notificationSubject}!
 
-        Passenger: ${customerName}
+        Passenger: ${finalCustomerName}
         Route: ${routeData.originCity} to ${routeData.destinationCity}
         Date: ${routeData.departureTime}
         Seats: ${seats}
         Amount: ₦${booking.totalAmount.toLocaleString()}
         Payment: ${paymentMethod}
         Status: ${bookingStatus}
-
-        ${bookingStatus === BookingStatus.CONFIRMED ? "Please make arrangements for this passenger." : "Payment verification is in progress by Admin."}
         `;
+        
+        // Find Company Owner Phone Number if possible (Complex, requires query)
+        // For now, if we have contact info that looks like a phone, or just rely on Admin Panel check
+        // But let's check for Company Admin User using companyId logic if needed.
+        // Simplified: If company contactInfo is phone, use it.
+        const likelyPhone = !company.contactInfo.includes("@") ? company.contactInfo : null;
+        if (likelyPhone) {
+            await sendSMS(likelyPhone, `New Booking: ${finalCustomerName} paid ${booking.totalAmount} for ${seats} seat(s). Route: ${routeData.originCity}-${routeData.destinationCity}.`);
+        }
+
 
         await sendEmail(companyEmail, notificationSubject, companyEmailBody);
     }

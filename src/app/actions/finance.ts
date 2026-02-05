@@ -277,13 +277,15 @@ export async function requestPayout(companyId: string, amount: number, bankDetai
         status: "PENDING" // Starts as Pending
     });
 
-    // 3. Send Email Notification to SUPER ADMIN
+    // 3. Send Email & SMS Notification to SUPER ADMIN
     // Find Super Admin email (Assuming specific email or finding first super admin)
     const User = (await import("@/models/User")).default;
     const TransportCompany = (await import("@/models/TransportCompany")).default;
     
     const superAdmin = await User.findOne({ role: "SUPER_ADMIN" });
     const company = await TransportCompany.findById(companyId);
+
+    const { sendSMS } = await import("@/lib/sms");
 
     if (superAdmin && superAdmin.email) {
         const { sendEmail } = await import("@/lib/email");
@@ -303,6 +305,13 @@ export async function requestPayout(companyId: string, amount: number, bankDetai
                 destinationCity: "",
                 departureTime: new Date()
             }, 'WITHDRAWAL_REQUEST')
+        );
+    }
+    
+    if (superAdmin && superAdmin.phoneNumber) {
+        await sendSMS(
+            superAdmin.phoneNumber,
+            `Alert: New Withdrawal Request from ${company?.name || "a company"} for N${amount.toLocaleString()}. Check Admin Finance.`
         );
     }
 
@@ -339,6 +348,8 @@ export async function processWithdrawal(transactionId: string, action: "APPROVE"
         // Notify Company
         const companyAdmin = await User.findOne({ companyId: transaction.companyId, role: "COMPANY_ADMIN" });
         const company = await TransportCompany.findById(transaction.companyId);
+        
+        const { sendSMS } = await import("@/lib/sms");
 
         if (companyAdmin && companyAdmin.email) {
              const { sendEmail } = await import("@/lib/email");
@@ -359,6 +370,14 @@ export async function processWithdrawal(transactionId: string, action: "APPROVE"
                     departureTime: new Date()
                 }, action === "APPROVE" ? 'WITHDRAWAL_APPROVED' : 'WITHDRAWAL_REJECTED')
              );
+        }
+        
+        if (companyAdmin && companyAdmin.phoneNumber) {
+            const smsMessage = action === "APPROVE"
+                ? `Withdrawal Approved! N${transaction.amount.toLocaleString()} has been processed.`
+                : `Withdrawal Rejected. Your request for N${transaction.amount.toLocaleString()} was declined.`;
+            
+            await sendSMS(companyAdmin.phoneNumber, smsMessage);
         }
 
         revalidatePath("/admin/finance");

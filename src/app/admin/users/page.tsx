@@ -36,34 +36,40 @@ export default async function AdminUsersPage() {
         <h1 className="text-3xl font-bold">Users & Admins</h1>
       </div>
 
-       <div className="bg-white rounded-md border shadow">
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Joined</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {users.map((user: any) => (
-                    <TableRow key={user._id.toString()}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                            <Badge variant={
-                                user.role === Role.SUPER_ADMIN ? "destructive" : 
-                                user.role === Role.COMPANY_ADMIN ? "default" : "secondary"
-                            }>
-                                {user.role.replace('_', ' ')}
-                            </Badge>
-                        </TableCell>
-                        <TableCell>{format(new Date(user.createdAt), 'MMM d, yyyy')}</TableCell>
+       <div className="bg-white rounded-md border shadow overflow-hidden">
+        <div className="overflow-x-auto">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead className="min-w-[150px]">Name</TableHead>
+                        <TableHead className="min-w-[200px]">Email</TableHead>
+                        <TableHead className="min-w-[100px]">Role</TableHead>
+                        <TableHead className="min-w-[150px]">Joined</TableHead>
                     </TableRow>
-                ))}
-            </TableBody>
-        </Table>
+                </TableHeader>
+                <TableBody>
+                    {users.map((user: any) => (
+                        <TableRow key={user._id.toString()}>
+                            <TableCell className="font-medium whitespace-nowrap">{user.name}</TableCell>
+                            <TableCell>
+                                <a href={`mailto:${user.email}`} className="hover:text-blue-600 hover:underline">
+                                    {user.email}
+                                </a>
+                            </TableCell>
+                            <TableCell>
+                                <Badge variant={
+                                    user.role === Role.SUPER_ADMIN ? "destructive" : 
+                                    user.role === Role.COMPANY_ADMIN ? "default" : "secondary"
+                                }>
+                                    {user.role.replace('_', ' ')}
+                                </Badge>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">{format(new Date(user.createdAt), 'MMM d, yyyy')}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
       </div>
     </div>
   );

@@ -21,7 +21,11 @@ const BookingSchema = new Schema(
     },
     customerName: {
       type: String,
-      required: false, // Required for MANUAL
+      required: false, // Required for MANUAL or GUEST
+    },
+    customerEmail: {
+      type: String,
+      required: false, // Required for GUEST
     },
     customerPhone: {
       type: String,

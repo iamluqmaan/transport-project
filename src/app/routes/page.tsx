@@ -111,7 +111,7 @@ export default async function RoutesPage({
     // Calculate available seats
     const bookedSeats = await Booking.countDocuments({
         routeId: r._id,
-        status: { $in: ["CONFIRMED", "PENDING", "COMPLETED"] } // Include PENDING if those seats are held
+        status: { $in: ["CONFIRMED"] } // Only confirmed bookings take up seats
     });
     
     // Default cap if vehicle missing (shouldn't happen with proper relations)
@@ -198,7 +198,7 @@ export default async function RoutesPage({
                        </Button>
                    ) : (
                        <Link href={`/routes/${route.id}/booking`}>
-                           <Button className="w-full">View Seats</Button>
+                           <Button className="w-full">Book Trip</Button>
                        </Link>
                    )}
                 </div>

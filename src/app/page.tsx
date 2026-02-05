@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchForm } from "@/components/search-form";
 import { Search, MapPin, Calendar, ArrowRight } from "lucide-react";
+import { format } from "date-fns";
 import Link from "next/link";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
@@ -10,6 +11,8 @@ import Booking from "@/models/Booking";
 import TransportCompany from "@/models/TransportCompany";
 import Vehicle from "@/models/Vehicle";
 import Route from "@/models/Route";
+
+export const dynamic = 'force-dynamic';
 
 // Fallback routes if no bookings exist
 const FALLBACK_ROUTES = [
@@ -108,7 +111,7 @@ async function getPopularRoutes() {
             // Calculate available seats
             const bookedSeats = await Booking.countDocuments({
                 routeId: cheapestRoute._id,
-                status: { $in: ["CONFIRMED", "PENDING", "COMPLETED"] }
+                status: { $in: ["CONFIRMED"] }
             });
             const capacity = cheapestRoute.vehicleId?.capacity || 14;
             const availableSeats = Math.max(0, capacity - bookedSeats);
@@ -120,14 +123,9 @@ async function getPopularRoutes() {
                 company: (cheapestRoute.companyId as any)?.name || "Transport Company",
                 vehicle: (cheapestRoute.vehicleId as any)?.type || "Bus",
                 id: cheapestRoute._id.toString(),
-                availableSeats: availableSeats
+                availableSeats: availableSeats,
+                departureTime: cheapestRoute.departureTime // Add departure time
             });
-        } else {
-             // If no upcoming route found for this pair in real DB, skip it or mock it?
-             // Skipping is safer to avoid empty clicks. 
-             // But if DB is empty, we show nothing. Let's mock IF we are in development/demo mode and found nothing.
-             // For this task, let's assume if it's in FALLBACK, we might want to show placeholders if DB is empty?
-             // No, user wants REAL data. If no real route exists, don't show it.
         }
     }
 
@@ -222,6 +220,22 @@ export default async function Home() {
                                 <p className="text-xs text-gray-500 mb-1">Starts from</p>
                                 <p className="font-bold text-primary text-xl">₦{route.price}</p>
                             </div>
+                        </div>
+                        
+                        {/* Departure Time Display */}
+                        <div className="mt-4 pt-3 border-t text-sm text-gray-600 flex items-center gap-2">
+                             <Calendar className="h-4 w-4 text-primary" />
+                             <span>
+                                {(route as any).departureTime ? 
+                                    (
+                                        <>
+                                            <span className="font-medium">{format(new Date((route as any).departureTime), 'MMM d, yyyy')}</span> at <span className="font-medium">{format(new Date((route as any).departureTime), 'h:mm a')}</span>
+                                        </>
+                                    ) : (
+                                        "Multiple Schedules"
+                                    )
+                                }
+                             </span>
                         </div>
                         </div>
                     </div>

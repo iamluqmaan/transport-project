@@ -75,8 +75,9 @@ export function EditRouteForm({ routeId, initialData }: EditRouteFormProps) {
       setError(result.error);
       setLoading(false);
     } else {
-       // Success, redirect happens in action, but we can also push here if needed
-       // router.push("/admin/routes"); 
+       setLoading(false);
+       router.refresh(); // Update client cache
+       router.push("/admin/routes"); 
     }
   }
 

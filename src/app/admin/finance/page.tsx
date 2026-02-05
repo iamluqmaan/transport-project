@@ -85,12 +85,13 @@ export default async function AdminFinancePage() {
                         <CardTitle>Company Ledger (Payouts)</CardTitle>
                     </CardHeader>
                     <CardContent>
+                    <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Company Name</TableHead>
-                                    <TableHead className="text-right">Net Balance</TableHead>
-                                    <TableHead className="text-right">Action</TableHead>
+                                    <TableHead className="min-w-[200px]">Company Name</TableHead>
+                                    <TableHead className="text-right min-w-[150px]">Net Balance</TableHead>
+                                    <TableHead className="text-right min-w-[100px]">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -101,8 +102,8 @@ export default async function AdminFinancePage() {
                                 ) : (
                                     summary.companyLedger.map((company: any, index: number) => (
                                         <TableRow key={index}>
-                                            <TableCell className="font-medium">{company.name}</TableCell>
-                                            <TableCell className={`text-right font-bold ${company.balanceDue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            <TableCell className="font-medium whitespace-nowrap">{company.name}</TableCell>
+                                            <TableCell className={`text-right font-bold ${company.balanceDue >= 0 ? 'text-green-600' : 'text-red-600'} whitespace-nowrap`}>
                                                 {company.balanceDue >= 0 ? '+' : ''}₦{company.balanceDue.toLocaleString()}
                                                 <div className="text-xs font-normal text-muted-foreground">
                                                     {company.balanceDue >= 0 ? "You owe them" : "They owe you"}
@@ -118,6 +119,7 @@ export default async function AdminFinancePage() {
                                 )}
                             </TableBody>
                         </Table>
+                    </div>
                     </CardContent>
                 </Card>
             </div>

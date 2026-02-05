@@ -30,8 +30,9 @@ export async function approveBooking(bookingId: string, _formData: FormData) {
         if (!booking) return;
 
         // Send Confirmation Email
-        const customerName = booking.userId?.name || "Valued Customer";
-        const email = booking.userId?.email;
+        const customerName = booking.userId?.name || booking.customerName || "Valued Customer";
+        const email = booking.userId?.email || booking.customerEmail;
+        const phone = booking.userId?.phoneNumber || booking.customerPhone;
         const routeData = booking.routeId;
         const companyName = routeData.companyId?.name || "Transport Company";
 
@@ -46,9 +47,16 @@ export async function approveBooking(bookingId: string, _formData: FormData) {
             seatNumber: booking.seatNumber,
             status: 'CONFIRMED'
         }, 'CONFIRMATION');
+        
+        const { sendSMS } = await import("@/lib/sms");
 
         if (email) {
             await sendEmail(email, "Booking Approved - Ticket Enclosed - TransportNG", emailHtml);
+        }
+        
+        if (phone) {
+             const smsMessage = `Booking Approved! Your trip from ${routeData.originCity} to ${routeData.destinationCity} is confirmed. Seat: ${booking.seatNumber}. Ticket: ${booking._id.toString().slice(-6)}`;
+             await sendSMS(phone, smsMessage);
         }
 
         // Distribute Revenue for the now confirmed booking
@@ -74,13 +82,16 @@ export async function rejectBooking(bookingId: string, _formData: FormData) {
         if (!booking) return;
         
         // Notify Rejection
-        const email = booking.userId?.email;
+        const email = booking.userId?.email || booking.customerEmail;
+        const phone = booking.userId?.phoneNumber || booking.customerPhone;
         const routeData = booking.routeId;
         const companyName = routeData?.companyId?.name || "Transport Company";
+        
+        const { sendSMS } = await import("@/lib/sms");
 
         if (email && routeData) {
             const emailHtml = generateBookingEmail({
-                customerName: booking.userId?.name || "Customer",
+                customerName: booking.userId?.name || booking.customerName || "Customer",
                 originCity: routeData.originCity,
                 destinationCity: routeData.destinationCity,
                 companyName: companyName,
@@ -91,6 +102,11 @@ export async function rejectBooking(bookingId: string, _formData: FormData) {
             }, 'REJECTION');
 
             await sendEmail(email, "Booking Update - TransportNG", emailHtml);
+        }
+        
+        if (phone && routeData) {
+            const smsMessage = `Booking Rejected. Your trip from ${routeData.originCity} to ${routeData.destinationCity} could not be confirmed. Please contact support.`;
+            await sendSMS(phone, smsMessage);
         }
 
         revalidatePath("/admin/bookings");

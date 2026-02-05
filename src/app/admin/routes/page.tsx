@@ -40,7 +40,7 @@ export default async function AdminRoutesPage() {
   const routes = await Promise.all(routesData.map(async (route) => {
       const bookedCount = await Booking.countDocuments({
           routeId: route._id,
-          status: { $in: [BookingStatus.CONFIRMED, BookingStatus.PENDING] }
+          status: { $in: [BookingStatus.CONFIRMED] }
       });
       const capacity = route.vehicleId?.capacity || 0;
       const availableSeats = Math.max(0, capacity - bookedCount);
@@ -64,50 +64,52 @@ export default async function AdminRoutesPage() {
         </Link>
       </div>
 
-       <div className="bg-white rounded-md border shadow">
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Origin</TableHead>
-                    <TableHead>Destination</TableHead>
-                    <TableHead>Departure</TableHead>
-                    <TableHead>Availability</TableHead> 
-                    <TableHead>Price</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {routes.map((route: any) => (
-                    <TableRow key={route._id}>
-                        <TableCell className="font-medium">{route.companyId?.name || 'N/A'}</TableCell>
-                        <TableCell>{route.originCity}</TableCell>
-                        <TableCell>{route.destinationCity}</TableCell>
-                        <TableCell>{format(new Date(route.departureTime), 'MMM d, h:mm a')}</TableCell>
-                        <TableCell>
-                            <Badge variant={route.availableSeats === 0 ? "destructive" : "secondary"}>
-                                {route.availableSeats} / {route.capacity} seats
-                            </Badge>
-                        </TableCell>
-                        <TableCell>₦{route.price.toLocaleString()}</TableCell>
-                         <TableCell className="text-right">
-                             <RouteActions 
-                                routeId={route._id} 
-                                price={route.price}
-                                availableSeats={route.availableSeats}
-                             />
-                         </TableCell>
-                    </TableRow>
-                ))}
-                 {routes.length === 0 && (
+       <div className="bg-white rounded-md border shadow overflow-hidden">
+        <div className="overflow-x-auto">
+            <Table>
+                <TableHeader>
                     <TableRow>
-                        <TableCell colSpan={7} className="text-center h-24 text-gray-500">
-                             No routes found. Create one above.
-                        </TableCell>
+                        <TableHead className="min-w-[150px]">Company</TableHead>
+                        <TableHead className="min-w-[120px]">Origin</TableHead>
+                        <TableHead className="min-w-[120px]">Destination</TableHead>
+                        <TableHead className="min-w-[180px]">Departure</TableHead>
+                        <TableHead className="min-w-[150px]">Availability</TableHead> 
+                        <TableHead className="min-w-[100px]">Price</TableHead>
+                        <TableHead className="text-right min-w-[120px]">Actions</TableHead>
                     </TableRow>
-                )}
-            </TableBody>
-        </Table>
+                </TableHeader>
+                <TableBody>
+                    {routes.map((route: any) => (
+                        <TableRow key={route._id}>
+                            <TableCell className="font-medium whitespace-nowrap">{route.companyId?.name || 'N/A'}</TableCell>
+                            <TableCell>{route.originCity}</TableCell>
+                            <TableCell>{route.destinationCity}</TableCell>
+                            <TableCell className="whitespace-nowrap">{format(new Date(route.departureTime), 'MMM d, yyyy h:mm a')}</TableCell>
+                            <TableCell className="whitespace-nowrap">
+                                <Badge variant={route.availableSeats === 0 ? "destructive" : "secondary"}>
+                                    {route.availableSeats} / {route.capacity} seats
+                                </Badge>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">₦{route.price.toLocaleString()}</TableCell>
+                             <TableCell className="text-right">
+                                 <RouteActions 
+                                    routeId={route._id} 
+                                    price={route.price}
+                                    availableSeats={route.availableSeats}
+                                 />
+                             </TableCell>
+                        </TableRow>
+                    ))}
+                     {routes.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={7} className="text-center h-24 text-gray-500">
+                                 No routes found. Create one above.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </div>
       </div>
     </div>
   );

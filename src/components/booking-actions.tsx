@@ -20,6 +20,7 @@ import {
     DialogTrigger
 } from "@/components/ui/dialog";
 import Image from "next/image";
+import { useToast } from "@/hooks/use-toast";
 
 interface BookingActionsProps {
   bookingId: string;
@@ -30,14 +31,26 @@ interface BookingActionsProps {
 export function BookingActions({ bookingId, status, proofUrl }: BookingActionsProps) {
   const [loading, setLoading] = useState(false);
   const [showProof, setShowProof] = useState(false);
+  const { toast } = useToast();
 
-  const handleAction = async (actionFn: (id: string, formData: FormData) => Promise<void>) => {
+  const handleAction = async (actionFn: (id: string, formData: FormData) => Promise<void>, actionName: string) => {
     setLoading(true);
     try {
         const formData = new FormData();
         await actionFn(bookingId, formData);
+        toast({
+            title: "Success",
+            description: `Booking ${actionName} successfully.`,
+            variant: "default",
+            className: "bg-green-600 text-white border-none"
+        });
     } catch (error) {
         console.error("Action failed", error);
+        toast({
+            title: "Error",
+            description: "Failed to update booking status.",
+            variant: "destructive"
+        });
     } finally {
         setLoading(false);
     }
@@ -47,9 +60,13 @@ export function BookingActions({ bookingId, status, proofUrl }: BookingActionsPr
     <>
         <DropdownMenu>
         <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
+            <Button variant="ghost" className="h-8 w-8 p-0" disabled={loading}>
             <span className="sr-only">Open menu</span>
-            <MoreHorizontal className="h-4 w-4" />
+            {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+            ) : (
+                <MoreHorizontal className="h-4 w-4" />
+            )}
             </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -67,19 +84,19 @@ export function BookingActions({ bookingId, status, proofUrl }: BookingActionsPr
             {status === "PENDING" && (
                 <>
                     <DropdownMenuItem 
-                        onClick={() => handleAction(approveBooking)} 
+                        onClick={() => handleAction(approveBooking, "approved")} 
                         disabled={loading}
                         className="text-green-600 focus:text-green-700 focus:bg-green-50 cursor-pointer"
                     >
-                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                        <Check className="mr-2 h-4 w-4" />
                         Approve Booking
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                        onClick={() => handleAction(rejectBooking)} 
+                        onClick={() => handleAction(rejectBooking, "rejected")} 
                         disabled={loading}
                         className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
                     >
-                         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
+                         <X className="mr-2 h-4 w-4" />
                         Reject Booking
                     </DropdownMenuItem>
                 </>
@@ -100,7 +117,7 @@ export function BookingActions({ bookingId, status, proofUrl }: BookingActionsPr
                 </DialogHeader>
                 <div className="relative aspect-video w-full overflow-hidden rounded-md bg-gray-100">
                     {proofUrl ? (
-                        proofUrl === "MANUAL_ENTRY" ? (
+                         proofUrl === "MANUAL_ENTRY" ? (
                              <div className="flex flex-col h-full items-center justify-center text-gray-500 bg-gray-50">
                                 <FileText className="h-12 w-12 mb-2 opacity-20" />
                                 <p className="font-medium">Manual Booking</p>

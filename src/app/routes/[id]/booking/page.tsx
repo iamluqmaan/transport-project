@@ -5,6 +5,7 @@ import { BookingForm } from "@/components/booking-form";
 import Link from "next/link";
 import "@/models/TransportCompany";
 import "@/models/Vehicle";
+import Booking from "@/models/Booking";
 import { auth } from "@/auth";
 
 export default async function BookingPage({ params }: { params: Promise<{ id: string }> }) {
@@ -43,11 +44,22 @@ export default async function BookingPage({ params }: { params: Promise<{ id: st
     notFound();
   }
 
+  // Calculate availability (same logic as other pages)
+  const bookedCount = await Booking.countDocuments({
+      routeId: rawRoute._id,
+      status: { $in: ["CONFIRMED"] }
+  });
+  const availableSeats = Math.max(0, (rawRoute.vehicleId?.capacity || 0) - bookedCount);
+
   return (
     <div className="container mx-auto px-4 py-12">
         <h1 className="text-3xl font-bold mb-8 text-center">Complete Your Booking</h1>
         <div className="max-w-xl mx-auto">
-            <BookingForm route={route} userId={session?.user?.id} />
+            <BookingForm 
+                route={route} 
+                userId={session?.user?.id} 
+                availableSeats={availableSeats}
+            />
         </div>
     </div>
   );

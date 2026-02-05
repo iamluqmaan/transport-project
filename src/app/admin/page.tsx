@@ -15,10 +15,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminDashboardPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
+export default async function AdminDashboardPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const session = await auth();
   await connectDB();
   
+  const resolvedSearchParams = await searchParams;
   const isSuperAdmin = session?.user.role === 'SUPER_ADMIN';
   const companyId = session?.user?.companyId;
 
@@ -27,7 +28,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
   let companyBookingsCount = 0;
   let companyPendingBookingsCount = 0;
   let filteredTransactions = [];
-  const filterType = typeof searchParams?.type === 'string' ? searchParams.type : null;
+  const filterType = typeof resolvedSearchParams?.type === 'string' ? resolvedSearchParams.type : null;
 
   if (!isSuperAdmin && companyId) {
       // Fetch company specific data
@@ -238,43 +239,45 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
                 )}
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Description</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredTransactions.length === 0 ? (
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center text-muted-foreground">
-                                    No {filterType ? filterType.toLowerCase() : ''} transactions found.
-                                </TableCell>
+                                <TableHead className="min-w-[150px]">Date</TableHead>
+                                <TableHead className="min-w-[200px]">Description</TableHead>
+                                <TableHead className="min-w-[100px]">Type</TableHead>
+                                <TableHead className="text-right min-w-[120px]">Amount</TableHead>
                             </TableRow>
-                        ) : (
-                            filteredTransactions.map((tx: any) => (
-                                <TableRow key={tx._id}>
-                                    <TableCell>{new Date(tx.createdAt).toLocaleDateString()} {new Date(tx.createdAt).toLocaleTimeString()}</TableCell>
-                                    <TableCell>{tx.description}</TableCell>
-                                    <TableCell>
-                                        <Badge 
-                                            variant={tx.type === 'CREDIT' ? 'default' : 'destructive'}
-                                            className={tx.type === 'CREDIT' ? 'bg-green-600' : 'bg-red-600'}
-                                        >
-                                            {tx.type}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className={`text-right font-medium ${tx.type === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
-                                        {tx.type === 'CREDIT' ? '+' : '-'}₦{tx.amount.toLocaleString()}
+                        </TableHeader>
+                        <TableBody>
+                            {filteredTransactions.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                        No {filterType ? filterType.toLowerCase() : ''} transactions found.
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
+                            ) : (
+                                filteredTransactions.map((tx: any) => (
+                                    <TableRow key={tx._id}>
+                                        <TableCell className="whitespace-nowrap">{new Date(tx.createdAt).toLocaleDateString()} {new Date(tx.createdAt).toLocaleTimeString()}</TableCell>
+                                        <TableCell className="min-w-[200px]">{tx.description}</TableCell>
+                                        <TableCell>
+                                            <Badge 
+                                                variant={tx.type === 'CREDIT' ? 'default' : 'destructive'}
+                                                className={tx.type === 'CREDIT' ? 'bg-green-600' : 'bg-red-600'}
+                                            >
+                                                {tx.type}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className={`text-right font-medium ${tx.type === 'CREDIT' ? 'text-green-600' : 'text-red-600'} whitespace-nowrap`}>
+                                            {tx.type === 'CREDIT' ? '+' : '-'}₦{tx.amount.toLocaleString()}
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
       )}
