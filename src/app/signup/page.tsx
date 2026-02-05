@@ -18,6 +18,7 @@ import { signup } from "@/app/actions/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, AlertCircle, CheckCircle2, Plus, Trash2 } from "lucide-react";
+import { signIn } from "next-auth/react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const formSchema = z.object({
@@ -31,13 +32,50 @@ const formSchema = z.object({
   password: z.string().min(6, {
     message: "Password must be at least 6 characters.",
   }),
-  companyName: z.string().optional(),
   isCompany: z.boolean().default(false).optional(),
+  // Make company fields optional in base schema to allow client-side hydration
+  companyName: z.string().optional(),
   bankAccounts: z.array(z.object({
-    bankName: z.string().min(2, "Bank name required"),
-    accountNumber: z.string().min(10, "Account number required"),
-    accountName: z.string().min(2, "Account name required"),
+    bankName: z.string().optional(),
+    accountNumber: z.string().optional(),
+    accountName: z.string().optional(),
   })).optional(),
+}).superRefine((data, ctx) => {
+  if (data.isCompany) {
+    if (!data.companyName || data.companyName.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["companyName"],
+        message: "Company name is required.",
+      });
+    }
+
+    if (data.bankAccounts) {
+      data.bankAccounts.forEach((account, index) => {
+        if (!account.bankName || account.bankName.length < 2) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["bankAccounts", index, "bankName"],
+            message: "Bank name required.",
+          });
+        }
+        if (!account.accountNumber || account.accountNumber.length < 10) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["bankAccounts", index, "accountNumber"],
+            message: "Account number required (min 10 digits).",
+          });
+        }
+        if (!account.accountName || account.accountName.length < 2) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["bankAccounts", index, "accountName"],
+            message: "Account name required.",
+          });
+        }
+      });
+    }
+  }
 });
 
 export default function SignupPage() {
@@ -70,17 +108,34 @@ export default function SignupPage() {
     try {
       const payload = {
         ...values,
+        phoneNumber: values.phoneNumber || undefined,
         role: values.isCompany ? "COMPANY_ADMIN" : "CUSTOMER",
+        bankAccounts: values.isCompany ? values.bankAccounts : undefined,
+        companyName: values.isCompany ? values.companyName : undefined,
       };
       // @ts-ignore - The action expects specific types but we are constructing it here.
       const result = await signup(payload);
       if (result.error) {
         setError(result.error as string);
       } else {
-        setSuccess("Account created successfully! Redirecting to login...");
-        setTimeout(() => {
-           router.push("/login");
-        }, 1500);
+        setSuccess("Account created successfully! Logging you in...");
+        
+        // Auto-login
+        const signInResult = await signIn("credentials", {
+          email: values.email,
+          password: values.password,
+          redirect: false,
+        });
+
+        if (signInResult?.error) {
+           setError("Account created, but failed to auto-login. Please login manually.");
+           setTimeout(() => {
+             router.push("/login");
+           }, 1500);
+        } else {
+           router.push("/");
+           router.refresh(); // Ensure the layout updates with the new session
+        }
       }
     } catch (e) {
       setError("An unexpected error occurred. Please try again.");
