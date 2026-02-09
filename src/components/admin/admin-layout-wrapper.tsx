@@ -51,6 +51,12 @@ export function AdminLayoutWrapper({ children, userRole }: AdminLayoutWrapperPro
       roles: ["SUPER_ADMIN", "COMPANY_ADMIN"],
     },
     {
+      href: "/admin/team",
+      label: "Team",
+      icon: Users,
+      roles: ["COMPANY_ADMIN"],
+    },
+    {
       href: "/admin/companies",
       label: "Transport Companies",
       icon: Building2,

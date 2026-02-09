@@ -4,6 +4,7 @@ export enum TransactionType {
   CREDIT = "CREDIT", // Adds to company balance (Platform owes Company)
   DEBIT = "DEBIT",   // Subtracts from company balance (Company owes Platform)
   WITHDRAWAL = "WITHDRAWAL", // Company requesting payout (Pending deduction)
+  INFO = "INFO", // Informational only, does not affect balance (e.g. Split Payments)
 }
 
 export enum TransactionCategory {
@@ -12,6 +13,7 @@ export enum TransactionCategory {
   PAYOUT = "PAYOUT",
   ADJUSTMENT = "ADJUSTMENT",
   BONUS = "BONUS", // Added for TransportNG bonuses
+  EXTERNAL_PAYMENT = "EXTERNAL_PAYMENT", // Money went directly to company via Paystack Split
 }
 
 const TransactionSchema = new Schema(

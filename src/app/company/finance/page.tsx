@@ -58,7 +58,7 @@ export default async function CompanyFinancePage({ searchParams }: { searchParam
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
                 <Card className="bg-primary/5">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium uppercase text-muted-foreground">Wallet Balance (Available)</CardTitle>
+                        <CardTitle className="text-sm font-medium uppercase text-muted-foreground">Net Account Balance</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className={`text-4xl font-bold ${data.balance >= 0 ? "text-green-600" : "text-red-600"}`}>
@@ -66,8 +66,11 @@ export default async function CompanyFinancePage({ searchParams }: { searchParam
                             ₦{Math.abs(data.balance).toLocaleString()}
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
-                            Available for Payout
+                            {data.balance < 0 ? "Amount you owe the platform (Commission Debt)" : "Available for Payout (Legacy/Refunds)"}
                         </p>
+                        <div className="mt-4 p-2 bg-blue-50 border border-blue-100 rounded text-xs text-blue-700">
+                            <strong>Note:</strong> Card payments are automatically split and sent to your bank. This balance reflects manual booking commissions and legacy adjustments.
+                        </div>
                     </CardContent>
                 </Card>
                  <Card>

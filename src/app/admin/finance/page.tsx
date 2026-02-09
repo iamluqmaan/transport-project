@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import CommissionParamsForm from "@/components/admin/CommissionParamsForm";
 import WithdrawalRequestsTable from "@/components/admin/WithdrawalRequestsTable";
+import CommissionHistoryTable from "@/components/admin/CommissionHistoryTable";
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -120,6 +121,18 @@ export default async function AdminFinancePage() {
                             </TableBody>
                         </Table>
                     </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Commission History */}
+            <div className="mb-8">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Recent Commissions Received</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <CommissionHistoryTable transactions={summary.recentCommissions || []} />
                     </CardContent>
                 </Card>
             </div>

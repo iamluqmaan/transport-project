@@ -1,5 +1,6 @@
+
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Shield, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import connectDB from "@/lib/db";
 import TransportCompany from "@/models/TransportCompany";
@@ -13,6 +14,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { CompanyEditDialog } from "@/components/admin/company-edit-dialog";
+import { DeleteCompanyButton } from "@/components/admin/delete-company-button";
 
 export const dynamic = 'force-dynamic';
 
@@ -46,14 +49,20 @@ export default async function CompaniesPage() {
                         <TableHead className="min-w-[150px]">Name</TableHead>
                         <TableHead className="min-w-[200px]">Contact Info</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Verified</TableHead>
                         <TableHead className="min-w-[150px]">Created At</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {companies.map((company) => (
-                        <TableRow key={company._id.toString()}>
-                            <TableCell className="font-medium whitespace-nowrap">{company.name}</TableCell>
+                        <TableRow key={`${company._id.toString()}-${company.isVerified}-${company.isActive}`}>
+                            <TableCell className="font-medium whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                    {company.name}
+                                    {company.isVerified && <Shield className="w-3 h-3 text-green-600" />}
+                                </div>
+                            </TableCell>
                             <TableCell>{company.contactInfo}</TableCell>
                              <TableCell>
                                  {company.isActive ? (
@@ -62,9 +71,19 @@ export default async function CompaniesPage() {
                                     <Badge variant="secondary">Inactive</Badge>
                                  )}
                              </TableCell>
+                             <TableCell>
+                                 {company.isVerified ? (
+                                    <Badge variant="outline" className="text-green-600 border-green-600">Verified</Badge>
+                                 ) : (
+                                    <Badge variant="outline" className="text-gray-400">Unverified</Badge>
+                                 )}
+                             </TableCell>
                             <TableCell className="whitespace-nowrap">{format(new Date(company.createdAt), 'PPP')}</TableCell>
                              <TableCell className="text-right">
-                                 <Button variant="ghost" size="sm">Edit</Button>
+                                <div className="flex items-center justify-end gap-2">
+                                     <CompanyEditDialog company={JSON.parse(JSON.stringify(company))} />
+                                     <DeleteCompanyButton companyId={company._id.toString()} companyName={company.name} />
+                                </div>
                              </TableCell>
                         </TableRow>
                     ))}

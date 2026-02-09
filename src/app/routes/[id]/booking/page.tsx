@@ -7,11 +7,19 @@ import "@/models/TransportCompany";
 import "@/models/Vehicle";
 import Booking from "@/models/Booking";
 import { auth } from "@/auth";
+import { getCommissionRate } from "@/app/actions/finance";
 
 export default async function BookingPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
   const { id } = await params;
+  
+  // Parallelize fetch for performance
+  const [session, commissionRate] = await Promise.all([
+    auth(),
+    getCommissionRate()
+  ]);
+
   await connectDB();
+  
   const rawRoute = await Route.findOne({ _id: id })
     .populate('companyId')
     .populate('vehicleId')
@@ -28,6 +36,7 @@ export default async function BookingPage({ params }: { params: Promise<{ id: st
       price: typeof rawRoute.price === 'number' ? rawRoute.price : 0,
       company: {
           name: rawRoute.companyId?.name || 'Unknown Company',
+          paystackSubaccountCode: rawRoute.companyId?.paystackSubaccountCode,
           bankAccounts: rawRoute.companyId?.bankAccounts?.map((acc: any) => ({
             ...acc,
             _id: acc._id?.toString(),
@@ -58,7 +67,9 @@ export default async function BookingPage({ params }: { params: Promise<{ id: st
             <BookingForm 
                 route={route} 
                 userId={session?.user?.id} 
+                userEmail={session?.user?.email || undefined}
                 availableSeats={availableSeats}
+                commissionRate={commissionRate}
             />
         </div>
     </div>

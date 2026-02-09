@@ -263,14 +263,14 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
                                         <TableCell className="min-w-[200px]">{tx.description}</TableCell>
                                         <TableCell>
                                             <Badge 
-                                                variant={tx.type === 'CREDIT' ? 'default' : 'destructive'}
-                                                className={tx.type === 'CREDIT' ? 'bg-green-600' : 'bg-red-600'}
+                                                variant={tx.type === 'CREDIT' ? 'default' : tx.type === 'INFO' ? 'secondary' : 'destructive'}
+                                                className={tx.type === 'CREDIT' ? 'bg-green-600' : tx.type === 'INFO' ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' : 'bg-red-600'}
                                             >
-                                                {tx.type}
+                                                {tx.type === 'INFO' ? 'DIRECT' : tx.type}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className={`text-right font-medium ${tx.type === 'CREDIT' ? 'text-green-600' : 'text-red-600'} whitespace-nowrap`}>
-                                            {tx.type === 'CREDIT' ? '+' : '-'}₦{tx.amount.toLocaleString()}
+                                        <TableCell className={`text-right font-medium ${tx.type === 'CREDIT' ? 'text-green-600' : tx.type === 'INFO' ? 'text-blue-600' : 'text-red-600'} whitespace-nowrap`}>
+                                            {tx.type === 'CREDIT' ? '+₦' : tx.type === 'INFO' ? '₦' : '-₦'}{tx.amount.toLocaleString()}
                                         </TableCell>
                                     </TableRow>
                                 ))

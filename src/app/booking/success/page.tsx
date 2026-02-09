@@ -1,41 +1,67 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Home } from "lucide-react";
+import connectDB from "@/lib/db";
+import Booking from "@/models/Booking";
+import { BookingReceipt } from "@/components/booking-receipt";
+import SystemSetting from "@/models/SystemSetting"; // ensure imported if needed, though not used here directly
 
-import { auth } from "@/auth";
+interface PageProps {
+  searchParams: Promise<{ bookingId?: string }>;
+}
 
-export default async function BookingSuccessPage() {
-  const session = await auth();
+export default async function BookingSuccessPage({ searchParams }: PageProps) {
+  const { bookingId } = await searchParams;
+  let booking = null;
+
+  if (bookingId) {
+    await connectDB();
+    // Deep populate for receipt details
+    booking = await Booking.findById(bookingId)
+      .populate('userId')
+      .populate({
+        path: 'routeId',
+        populate: [
+          { path: 'companyId' },
+          { path: 'vehicleId' }
+        ]
+      })
+      .lean(); 
+      // Use lean for plain JS object, helpful for client components, 
+      // but need to serialize _id and dates.
+  }
+  
+  // Serialize the Mongoose document to a plain object
+  const bookingData = booking ? JSON.parse(JSON.stringify(booking)) : null;
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6">
-        <CheckCircle className="h-8 w-8 text-green-600" />
-      </div>
-      <h1 className="text-3xl font-bold mb-4">Booking Confirmed!</h1>
-      <p className="text-gray-600 max-w-md mb-8">
-        Your ticket has been reserved successfully. A confirmation email has been sent to your inbox.
-      </p>
-      
-      <div className="flex gap-4 mb-12">
-        <Link href="/routes">
-          <Button variant="outline">Book Another Trip</Button>
-        </Link>
-        <Link href="/">
-          <Button>Return Home</Button>
-        </Link>
-      </div>
-
-      {!session && (
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 max-w-lg w-full">
-            <h3 className="text-xl font-bold text-blue-900 mb-2">Enjoy Faster Bookings Next Time!</h3>
-            <p className="text-blue-700 mb-4">
-                Create an account to save your details, track your booking history, and unlock exclusive travel bonuses.
+    <div className="container mx-auto py-12 px-4">
+        <div className="flex flex-col items-center justify-center text-center mb-8">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+            <h1 className="text-3xl font-bold mb-4">Booking Confirmed!</h1>
+            <p className="text-gray-600 max-w-md">
+                Your ticket has been reserved successfully. A confirmation email and WhatsApp message has been sent to you.
             </p>
-            <Link href="/register">
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">Create My Account</Button>
-            </Link>
         </div>
-      )}
+
+        {bookingData ? (
+            <BookingReceipt booking={bookingData} />
+        ) : (
+             <div className="text-center text-red-500">
+                <p>Could not load booking details. Please check your email for confirmation.</p>
+            </div>
+        )}
+
+      <div className="flex justify-center mt-12">
+        <Link href="/">
+          <Button variant="outline" className="gap-2">
+            <Home className="w-4 h-4" />
+            Return Home
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 }

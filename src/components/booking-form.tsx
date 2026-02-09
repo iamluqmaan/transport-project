@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -6,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
+// @ts-ignore
+import { PaystackButton } from "react-paystack";
+
 interface RouteData {
   id: string;
   originCity: string;
@@ -14,6 +18,7 @@ interface RouteData {
   price: number;
   company: {
     name: string;
+    paystackSubaccountCode?: string; // Added
     bankAccounts: Array<{
       bankName: string;
       accountNumber: string;
@@ -30,10 +35,12 @@ interface RouteData {
 interface BookingFormProps {
   route: RouteData;
   userId?: string;
+  userEmail?: string; 
   availableSeats: number; 
+  commissionRate?: number; // Added
 }
 
-export function BookingForm({ route, userId, availableSeats }: BookingFormProps) {
+export function BookingForm({ route, userId, userEmail, availableSeats, commissionRate = 5 }: BookingFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [seats, setSeats] = useState(1);
@@ -65,20 +72,58 @@ export function BookingForm({ route, userId, availableSeats }: BookingFormProps)
       reader.readAsDataURL(file);
     }
   };
+  
+  // Paystack Config
+  // Calculate Commission (Transaction Charge)
+  // Use commissionRate passed from props (calculated as percentage)
+  
+  // NOTE: Paystack 'transaction_charge' is a flat fee in kobo.
+  // commissionRate is numeric (e.g. 5 for 5%)
+  const commissionPercentage = commissionRate / 100; 
+  const commissionAmount = Math.ceil(totalAmount * commissionPercentage); // Commission in Naira
+  
+  const paystackConfig: any = {
+    reference: (new Date()).getTime().toString(),
+    email: userId ? (userEmail || "user@transportng.com") : guestEmail,
+    amount: totalAmount * 100, // Amount in Kobo
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "", 
+    // metadata: { ... },
+  };
 
-  const handleBooking = async () => {
-    if (!userId) {
-        if (!guestName || !guestEmail || !guestPhone || !guestEmergencyContact) {
-            setError("Please fill in all guest details.");
-            return;
-        }
-    }
+  // Add Split Payment Config if subaccount exists
+  if (route.company.paystackSubaccountCode) {
+      paystackConfig.subaccount = route.company.paystackSubaccountCode;
+      
+      // 'bearer': 'subaccount' means the subaccount (Company) pays the Paystack fees.
+      // 'transaction_charge': The FLAT amount (in kobo) that goes to the MAIN account (Platform).
+      
+      // If commission is 0, we explicitly set transaction_charge to 0 to override any default percentage.
+      // We keep bearer as 'subaccount' so the company pays the processing fee from their share.
+      paystackConfig.transaction_charge = Math.max(0, commissionAmount * 100); 
+      paystackConfig.bearer = 'subaccount'; 
+  }
+  
+  console.log("Paystack Config Debug:", paystackConfig);
 
-    if (paymentMethod === "BANK_TRANSFER" && !proofOfPayment) {
-        setError("Please upload proof of payment.");
-        return;
-    }
+  const handlePaystackSuccess = (reference: any) => {
+      // Logic to run after payment success
+      processBooking(reference);
+  };
 
+  const handlePaystackClose = () => {
+      console.log('Payment closed');
+      setLoading(false);
+  }
+
+  const componentProps = {
+      ...paystackConfig,
+      text: `Pay ₦${totalAmount.toLocaleString()}`,
+      onSuccess: (reference: any) => handlePaystackSuccess(reference),
+      onClose: handlePaystackClose,
+  };
+
+
+  const processBooking = async (paystackReference?: any) => {
     setLoading(true);
     setError(null);
 
@@ -98,20 +143,50 @@ export function BookingForm({ route, userId, availableSeats }: BookingFormProps)
           amount: totalAmount,
           seats: seats,
           paymentMethod: paymentMethod, 
-          proofOfPayment: proofOfPayment
+          proofOfPayment: proofOfPayment,
+          paymentReference: paystackReference ? paystackReference.reference : undefined // Send Paystack ref
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Payment failed");
+        throw new Error(data.error || "Payment failed");
       }
 
-      router.push("/booking/success");
-    } catch (err) {
-      setError("Booking failed. Please try again.");
-    } finally {
+      router.push(`/booking/success?bookingId=${data.bookingId}`);
+      // Keep loading true while redirecting
+    } catch (err: any) {
+      setError(err.message || "Booking failed. Please try again.");
       setLoading(false);
-    }
+    } 
+    // finally block removed to prevent setting loading to false on success
+  };
+
+  const handleBookingSubmit = async () => {
+      if (!userId) {
+        if (!guestName || !guestEmail || !guestPhone || !guestEmergencyContact) {
+            setError("Please fill in all guest details.");
+            return;
+        }
+      }
+
+      if (paymentMethod === "BANK_TRANSFER") {
+          if (!proofOfPayment) {
+              setError("Please upload proof of payment.");
+              return;
+          }
+          await processBooking();
+      } else {
+          // Validation for card payment guest details before showing button?
+          // The button is effectively the submit.
+          // If fields are empty, Paystack button creates issue if email is missing.
+          if (!userId && !guestEmail) {
+               setError("Email is required for card payment.");
+               return;
+          }
+          // The rendering logic below handles the button switch.
+      }
   };
 
   return (
@@ -143,7 +218,7 @@ export function BookingForm({ route, userId, availableSeats }: BookingFormProps)
 
       {!userId && (
         <div className="mb-6 border-b pb-6">
-            <h4 className="font-semibold mb-3">Guest Details</h4>
+            <h4 className="font-semibold mb-3">Customer Detail</h4>
             <div className="space-y-3">
                 <Input 
                     placeholder="Full Name" 
@@ -275,23 +350,41 @@ export function BookingForm({ route, userId, availableSeats }: BookingFormProps)
 
       {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
-      <Button 
-        onClick={handleBooking} 
-        className="w-full h-12 text-lg" 
-        disabled={loading}
-      >
-        {loading ? (
-            <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
-            </>
+      {loading ? (
+        <Button 
+            className="w-full h-12 text-lg" 
+            disabled
+        >
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Generating Payment Receipt - Please Wait...
+        </Button>
+      ) : (
+        <>
+        {paymentMethod === "CARD" ? (
+            (!userId && !guestEmail) ? (
+                 <Button onClick={() => setError("Please enter your email address to proceed with card payment.")} className="w-full h-12 text-lg">
+                     Enter Email to Pay
+                 </Button>
+            ) : (
+              <PaystackButton 
+                  className="w-full h-12 text-lg bg-primary text-white rounded-md font-medium hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none" 
+                  {...componentProps} 
+              />
+            )
         ) : (
-            paymentMethod === "CARD" 
-            ? `Pay ₦${totalAmount.toLocaleString()}` 
-            : "I have sent the money"
+          <Button 
+              onClick={handleBookingSubmit} 
+              className="w-full h-12 text-lg" 
+              disabled={loading}
+          >
+              "I have sent the money"
+          </Button>
         )}
-      </Button>
+        </>
+      )}
+      
       {!userId && <p className="text-xs text-center mt-2 text-gray-500">You will be asked to log in first.</p>}
     </div>
   );
 }
+

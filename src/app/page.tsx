@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchForm } from "@/components/search-form";
-import { Search, MapPin, Calendar, ArrowRight } from "lucide-react";
+import { Search, MapPin, Calendar, ArrowRight, Shield } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { auth } from "@/auth";
@@ -124,7 +124,9 @@ async function getPopularRoutes() {
                 vehicle: (cheapestRoute.vehicleId as any)?.type || "Bus",
                 id: cheapestRoute._id.toString(),
                 availableSeats: availableSeats,
-                departureTime: cheapestRoute.departureTime // Add departure time
+                departureTime: cheapestRoute.departureTime,
+                isVerified: (cheapestRoute.companyId as any)?.isVerified || false,
+                isActive: (cheapestRoute.companyId as any)?.isActive || false
             });
         }
     }
@@ -154,13 +156,12 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Popular Routes Section */}
-      <section className="py-16 bg-gray-50">
+       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="flex justify-between items-center mb-10">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
             <h2 className="text-3xl font-bold tracking-tight text-gray-900">Popular Routes</h2>
-            <Link href="/routes" className="text-primary font-medium hover:underline">
-              View all routes
+            <Link href="/routes" className="text-primary font-medium hover:underline flex items-center gap-1 group">
+              View all routes <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
 
@@ -187,8 +188,28 @@ export default async function Home() {
                         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center text-blue-300">
                             <MapPin className="h-12 w-12 opacity-20" />
                         </div>
-                        <div className="absolute bottom-3 left-4 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold text-gray-700">
+                        <div className="absolute bottom-3 left-4 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold text-gray-700 flex items-center gap-1">
                             {route.company}
+                            {(route as any).isVerified ? (
+                                <div className="flex items-center gap-1 bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider border border-green-200">
+                                    <Shield className="w-3 h-3 fill-current" />
+                                    <span>Verified</span>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-1 bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider border border-red-200">
+                                    <Shield className="w-3 h-3" />
+                                    <span>Unverified</span>
+                                </div>
+                            )}
+                             {(route as any).isActive ? (
+                                <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider border border-green-200">
+                                    Active
+                                </span>
+                            ) : (
+                                <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider border border-red-200">
+                                    Inactive
+                                </span>
+                            )}
                         </div>
                         </div>
                         <div className="p-5">
@@ -246,9 +267,18 @@ export default async function Home() {
                           {CardContent}
                       </div>
                   ) : (
-                    <Link href={`/routes?from=${route.from}&to=${route.to}`} key={idx} className="h-full block">
-                        {CardContent}
-                    </Link>
+                    <div key={idx} className="h-full flex flex-col">
+                        <Link href={`/routes?from=${route.from}&to=${route.to}`} className="block flex-grow hover:no-underline">
+                            {CardContent}
+                        </Link>
+                        <div className="mt-2 text-center">
+                            <Link href={`/routes/${route.id}/booking`}>
+                                <Button className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-2 rounded-lg shadow-md transition-all transform hover:scale-[1.02]">
+                                    Book Trip
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
                   );
                 })}
             </div>
@@ -267,27 +297,59 @@ export default async function Home() {
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4 text-center">
             <h2 className="text-3xl font-bold mb-12">Why Book with TransportNG?</h2>
-            <div className="grid md:grid-cols-3 gap-8">
-                <div className="p-6">
-                    <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Search className="h-8 w-8" />
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {/* Perk 1 */}
+                <div className="p-6 bg-blue-50 rounded-xl hover:shadow-md transition-shadow">
+                    <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4">
+                        <Search className="h-7 w-7" />
                     </div>
                     <h3 className="text-xl font-bold mb-2">Compare & Save</h3>
-                    <p className="text-gray-600">Compare prices and schedules from all major transport companies in one place.</p>
+                    <p className="text-gray-600">Find the best deals by comparing prices and schedules from all major transport companies.</p>
                 </div>
-                 <div className="p-6">
-                    <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Calendar className="h-8 w-8" />
+
+                {/* Perk 2 - Updated */}
+                <div className="p-6 bg-green-50 rounded-xl hover:shadow-md transition-shadow">
+                    <div className="w-14 h-14 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
+                        <Calendar className="h-7 w-7" />
                     </div>
-                     <h3 className="text-xl font-bold mb-2">Instant Booking</h3>
-                    <p className="text-gray-600">Secure your seat in advance. No more waiting at the park for hours.</p>
+                     <h3 className="text-xl font-bold mb-2">Book in Under 5 Minutes</h3>
+                    <p className="text-gray-600">Secure your seat quickly and easily. No more long queues or waiting at the park.</p>
                 </div>
-                 <div className="p-6">
-                    <div className="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <MapPin className="h-8 w-8" />
+
+                {/* Perk 3 - Updated */}
+                <div className="p-6 bg-purple-50 rounded-xl hover:shadow-md transition-shadow">
+                    <div className="w-14 h-14 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mb-4">
+                        <MapPin className="h-7 w-7" />
                     </div>
                      <h3 className="text-xl font-bold mb-2">Nationwide Coverage</h3>
-                    <p className="text-gray-600">From Lagos to Borno, we connect you to every state in Nigeria.</p>
+                    <p className="text-gray-600">From East to West, North to South, we connect you to every state in Nigeria.</p>
+                </div>
+
+                {/* Perk 4 - New */}
+                <div className="p-6 bg-orange-50 rounded-xl hover:shadow-md transition-shadow">
+                    <div className="w-14 h-14 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mb-4">
+                        <Shield className="h-7 w-7" />
+                    </div>
+                     <h3 className="text-xl font-bold mb-2">Safe & Secure</h3>
+                    <p className="text-gray-600">Travel with peace of mind. We partner with verified companies and ensure secure payments.</p>
+                </div>
+
+                 {/* Perk 5 - New */}
+                 <div className="p-6 bg-pink-50 rounded-xl hover:shadow-md transition-shadow">
+                    <div className="w-14 h-14 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                    </div>
+                     <h3 className="text-xl font-bold mb-2">Comfort & Style</h3>
+                    <p className="text-gray-600">Enjoy comfortable rides with modern facilities like AC, charging ports, and more.</p>
+                </div>
+
+                 {/* Perk 6 - New */}
+                 <div className="p-6 bg-indigo-50 rounded-xl hover:shadow-md transition-shadow">
+                    <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    </div>
+                     <h3 className="text-xl font-bold mb-2">24/7 Support</h3>
+                    <p className="text-gray-600">Our customer service team is always available to resolve any issues with your booking.</p>
                 </div>
             </div>
         </div>

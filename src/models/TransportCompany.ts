@@ -21,14 +21,23 @@ const TransportCompanySchema = new Schema(
     bankAccounts: [{
       bankName: { type: String, required: true },
       accountNumber: { type: String, required: true },
-      accountName: { type: String, required: true }
+      accountName: { type: String, required: true },
+      bankCode: { type: String, required: false } // Added for Paystack
     }],
+    paystackSubaccountCode: {
+      type: String,
+      required: false
+    },
     commissionRate: {
       type: Number,
       required: false, 
       default: 5 // Default 5% if not specified
     },
     isActive: {
+      type: Boolean,
+      default: false,
+    },
+    isVerified: {
       type: Boolean,
       default: false,
     },

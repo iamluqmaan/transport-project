@@ -80,6 +80,12 @@ export async function createManualBooking(data: ManualBookingData) {
     const bookingDocs = [];
     const amountPerSeat = amountPaid / seats;
 
+    // Determine Commission
+    const { getCommissionRate } = await import("@/app/actions/finance");
+    const commissionRate = await getCommissionRate();
+    const serviceFeePerSeat = (amountPerSeat * commissionRate) / 100;
+    const companyRevenuePerSeat = amountPerSeat - serviceFeePerSeat;
+
     // Calculate starting seat number
     let nextSeatNumber = currentBookingsCount + 1;
 
@@ -93,7 +99,8 @@ export async function createManualBooking(data: ManualBookingData) {
             emergencyContact, 
             paymentMethod,
             totalAmount: amountPerSeat,
-            companyRevenue: amountPerSeat, 
+            serviceFee: serviceFeePerSeat,
+            companyRevenue: companyRevenuePerSeat, 
             seatNumber: nextSeatNumber.toString(), // Assign sequential number
             proofOfPayment: "MANUAL_ENTRY",
         });

@@ -22,14 +22,6 @@ export async function distributeBookingRevenue(bookingId: string) {
     return;
   }
 
-  // Prevent double processing
-  // Check if a transaction already exists for this booking
-  const existingTx = await Transaction.findOne({ bookingId: booking._id });
-  if (existingTx) {
-    console.log(`Revenue already distributed for booking ${bookingId}.`);
-    return;
-  }
-
   const company = booking.routeId?.companyId;
   if (!company) {
     console.error(`Company not found for booking ${bookingId}`);
@@ -37,51 +29,89 @@ export async function distributeBookingRevenue(bookingId: string) {
   }
 
   // Determine Commission Rate
-  // Priority: Global System Rate (As per user request)
-  // We ignore company specific rates for now to ensure platform cut is uniform and controllable by Super Admin.
-  const rate = await getCommissionRate();
-
+  // Priority: Use values captured at booking time if available. 
+  // If undefined/zero (legacy), fetch current system rate.
+  let serviceFee = booking.serviceFee;
+  let companyRevenue = booking.companyRevenue;
   const totalAmount = booking.totalAmount;
-  const serviceFee = (totalAmount * rate) / 100;
-  const companyRevenue = totalAmount - serviceFee;
 
-  // Update Booking with calculated financials
-  booking.serviceFee = serviceFee;
-  booking.companyRevenue = companyRevenue;
-  await booking.save();
+  if (serviceFee === undefined || companyRevenue === undefined || (serviceFee === 0 && companyRevenue === 0 && totalAmount > 0)) {
+      const rate = await getCommissionRate();
+      serviceFee = (totalAmount * rate) / 100;
+      companyRevenue = totalAmount - serviceFee;
 
-  // Create Ledger Transaction
-  // Logic:
-  // ONLINE: Platform holds money. We OWE company their revenue. -> CREDIT Company
-  // MANUAL: Company holds money. They OWE us commission. -> DEBIT Company
-
-  let txType: TransactionType;
-  let txAmount: number;
-  let txCategory: TransactionCategory;
-  let description: string;
-
-  if (booking.bookingType === "ONLINE") {
-      txType = TransactionType.CREDIT;
-      txAmount = companyRevenue; // We owe them the revenue part
-      txCategory = TransactionCategory.BOOKING_REVENUE;
-      description = `Revenue for Online Booking #${booking._id.toString().slice(-6)}`;
-  } else {
-      // MANUAL or cash
-      txType = TransactionType.DEBIT;
-      txAmount = serviceFee; // They owe us the commission part
-      txCategory = TransactionCategory.COMMISSION_DEDUCTION;
-      description = `Commission Fee for Booking #${booking._id.toString().slice(-6)}`;
+      // Update Booking with calculated financials
+      booking.serviceFee = serviceFee;
+      booking.companyRevenue = companyRevenue;
+      await booking.save();
   }
 
-  await Transaction.create({
-      type: txType,
-      category: txCategory,
-      amount: txAmount, // Store absolute value
-      description: description,
-      bookingId: booking._id,
-      companyId: company._id,
-      status: "COMPLETED"
-  });
+  // Prepare Transactions to Create
+  interface TxDef {
+      type: TransactionType;
+      category: TransactionCategory;
+      amount: number;
+      description: string;
+  }
+  const transactionsToCreate: TxDef[] = [];
 
-  console.log(`Distributed revenue for booking ${bookingId}: ${txType} ${txAmount}`);
+  if (booking.paymentMethod === "CARD") {
+      // Check for Split Payment (Subaccount)
+      if (company.paystackSubaccountCode) {
+          // INFO: Money went to bank directly
+          transactionsToCreate.push({
+              type: TransactionType.INFO,
+              category: TransactionCategory.EXTERNAL_PAYMENT,
+              amount: companyRevenue,
+              description: `Direct Payout (Split) for Booking #${booking._id.toString().slice(-6)}`
+          });
+      } else {
+          // CREDIT: Platform owes Company
+          transactionsToCreate.push({
+              type: TransactionType.CREDIT,
+              category: TransactionCategory.BOOKING_REVENUE,
+              amount: companyRevenue,
+              description: `Revenue for Online Card Booking #${booking._id.toString().slice(-6)}`
+          });
+      }
+  } else {
+      // Manual, Cash, Bank Transfer (Direct to Company), POS
+      
+      // 1. INFO: Record that company collected money (Revenue)
+      transactionsToCreate.push({
+          type: TransactionType.INFO,
+          category: TransactionCategory.BOOKING_REVENUE, 
+          amount: totalAmount, // Full amount collected by company
+          description: `Payment Received (${booking.paymentMethod}) for Booking #${booking._id.toString().slice(-6)}`
+      });
+
+      // 2. DEBIT: Company owes commission
+      transactionsToCreate.push({
+          type: TransactionType.DEBIT,
+          category: TransactionCategory.COMMISSION_DEDUCTION,
+          amount: serviceFee,
+          description: `Commission Fee for Booking #${booking._id.toString().slice(-6)}`
+      });
+  }
+
+  // Create Transactions Idempotently
+  for (const txData of transactionsToCreate) {
+      const existingTx = await Transaction.findOne({ 
+          bookingId: booking._id, 
+          type: txData.type,
+          category: txData.category 
+      });
+
+      if (!existingTx) {
+          await Transaction.create({
+              ...txData,
+              bookingId: booking._id,
+              companyId: company._id,
+              status: "COMPLETED"
+          });
+          console.log(`Created ${txData.type} transaction for booking ${bookingId}`);
+      } else {
+          console.log(`Transaction ${txData.type} already exists for booking ${bookingId}`);
+      }
+  }
 }

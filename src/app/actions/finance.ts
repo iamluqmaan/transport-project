@@ -123,8 +123,36 @@ export async function getFinancialSummary() {
     totalCompanyRevenue,
     totalBookingsValue,
     companyLedger: companyLedger,
-    pendingWithdrawals: enrichedPendingRequests
+    pendingWithdrawals: enrichedPendingRequests,
+    recentCommissions: await getRecentCommissions()
   };
+}
+
+export async function getRecentCommissions() {
+  await connectDB();
+  const Booking = (await import("@/models/Booking")).default;
+  
+  // Fetch recent bookings that generated commission
+  const bookings = await Booking.find({
+      status: { $in: ["CONFIRMED", "COMPLETED"] }
+  })
+  .sort({ createdAt: -1 })
+  .limit(50) // Show last 50
+  .populate({
+      path: 'routeId',
+      populate: { path: 'companyId' }
+  })
+  .lean();
+
+  return bookings.map((b: any) => ({
+      id: b._id.toString(),
+      date: b.createdAt,
+      companyName: b.routeId?.companyId?.name || "Unknown",
+      route: `${b.routeId?.originCity} - ${b.routeId?.destinationCity}`,
+      commissionAmount: b.serviceFee || 0,
+      paymentMethod: b.paymentMethod,
+      bookingRef: b.paymentRef || b._id.toString().slice(-6)
+  }));
 }
 
 // 4. Get Company Specific Financials
