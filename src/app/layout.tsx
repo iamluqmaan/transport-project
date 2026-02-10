@@ -8,6 +8,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
 import { Footer } from "@/components/footer";
 import { WhatsAppWidget } from "@/components/whatsapp-widget";
+import { CookieConsent } from "@/components/cookie-consent";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -31,8 +32,7 @@ export default function RootLayout({
             </main>
             <Footer />
             <WhatsAppWidget />
-            <Footer />
-            <WhatsAppWidget />
+            <CookieConsent />
             <Toaster />
             <SonnerToaster />
         </SessionProvider>

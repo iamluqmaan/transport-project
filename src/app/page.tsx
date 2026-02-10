@@ -284,9 +284,10 @@ export default async function Home() {
             </div>
           ) : (
             <div className="text-center py-10 bg-white rounded-lg border">
-                <p className="text-gray-500">No popular routes found currently available.</p>
+                <p className="text-gray-500 mb-2">No popular routes found yet.</p>
+                <p className="text-sm text-gray-400 mb-4">Book more trips! As tailored routes are booked, they will appear here for quick access.</p>
                 <Link href="/routes">
-                    <Button variant="link">Browse all routes</Button>
+                    <Button variant="default">Browse All Routes</Button>
                 </Link>
             </div>
           )}
