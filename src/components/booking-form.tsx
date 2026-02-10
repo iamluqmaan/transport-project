@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
 // @ts-ignore
-import { PaystackButton } from "react-paystack";
+import { usePaystackPayment } from "react-paystack";
 
 interface RouteData {
   id: string;
@@ -87,7 +87,25 @@ export function BookingForm({ route, userId, userEmail, availableSeats, commissi
     email: userId ? (userEmail || "user@transportng.com") : guestEmail,
     amount: totalAmount * 100, // Amount in Kobo
     publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "", 
-    // metadata: { ... },
+    metadata: {
+        custom_fields: [
+            {
+                display_name: "User ID",
+                variable_name: "user_id",
+                value: userId || guestPhone || guestEmail
+            },
+            {
+                display_name: "Customer Name",
+                variable_name: "customer_name",
+                value: userId ? "Registered User" : guestName
+            },
+            {
+                display_name: "Customer Phone",
+                variable_name: "customer_phone",
+                value: guestPhone 
+            }
+        ]
+    },
   };
 
   // Add Split Payment Config if subaccount exists
@@ -103,8 +121,6 @@ export function BookingForm({ route, userId, userEmail, availableSeats, commissi
       paystackConfig.bearer = 'subaccount'; 
   }
   
-  console.log("Paystack Config Debug:", paystackConfig);
-
   const handlePaystackSuccess = (reference: any) => {
       // Logic to run after payment success
       processBooking(reference);
@@ -115,12 +131,9 @@ export function BookingForm({ route, userId, userEmail, availableSeats, commissi
       setLoading(false);
   }
 
-  const componentProps = {
-      ...paystackConfig,
-      text: `Pay ₦${totalAmount.toLocaleString()}`,
-      onSuccess: (reference: any) => handlePaystackSuccess(reference),
-      onClose: handlePaystackClose,
-  };
+  // Use hook instead of Component for better control
+  // @ts-ignore
+  const initializePayment = usePaystackPayment(paystackConfig);
 
 
   const processBooking = async (paystackReference?: any) => {
@@ -303,6 +316,9 @@ export function BookingForm({ route, userId, userEmail, availableSeats, commissi
       {paymentMethod === "BANK_TRANSFER" && (
           <div className="bg-gray-50 p-4 rounded-lg mb-6 border">
               <h4 className="font-semibold mb-2 text-sm">Bank Details</h4>
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-2 mb-3 text-xs text-yellow-800">
+                  <strong>IMPORTANT:</strong> Please verify the account details below carefully before making any transfer.
+              </div>
               {route.company.bankAccounts && route.company.bankAccounts.length > 0 ? (
                 <div className="space-y-4">
                   {route.company.bankAccounts.map((account, index) => (
@@ -366,10 +382,21 @@ export function BookingForm({ route, userId, userEmail, availableSeats, commissi
                      Enter Email to Pay
                  </Button>
             ) : (
-              <PaystackButton 
-                  className="w-full h-12 text-lg bg-primary text-white rounded-md font-medium hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none" 
-                  {...componentProps} 
-              />
+              <div className="text-center">
+                  <Button 
+                      className="w-full h-12 text-lg bg-primary text-white rounded-md font-medium hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none" 
+                      onClick={() => {
+                          // @ts-ignore
+                          initializePayment(handlePaystackSuccess, handlePaystackClose);
+                      }}
+                  >
+                        Pay ₦{totalAmount.toLocaleString()}
+                  </Button>
+                  <p className="text-[10px] text-gray-400 mt-2 flex items-center justify-center gap-1">
+                      <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                      Payment secured using Paystack
+                  </p>
+              </div>
             )
         ) : (
           <Button 
