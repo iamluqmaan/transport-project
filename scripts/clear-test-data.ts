@@ -66,8 +66,13 @@ const clearData = async () => {
     // Actually, to be 100% sure, I will define minimal models or just use `mongoose.model` if I knew the schema, 
     // BUT even better, I can just list all collections and delete the ones provided.
     
+    if (!mongoose.connection.db) {
+      throw new Error('Database connection failed to initialize');
+    }
+    const db = mongoose.connection.db;
+
     // Let's try to access the collections directly.
-    const collections = await mongoose.connection.db.listCollections().toArray();
+    const collections = await db.listCollections().toArray();
     const collectionNames = collections.map(c => c.name);
     console.log('Found collections:', collectionNames);
 
@@ -75,7 +80,7 @@ const clearData = async () => {
 
     for (const name of collectionNames) {
       if (targetCollections.includes(name)) {
-        const result = await mongoose.connection.db.collection(name).deleteMany({});
+        const result = await db.collection(name).deleteMany({});
         console.log(`🗑️  Cleared ${name}: ${result.deletedCount} documents`);
       }
     }
