@@ -74,29 +74,42 @@ export async function updateProfile(data: z.input<typeof UpdateProfileSchema>) {
                           let subaccountUpdated = false;
                           if (subaccountCode) {
                               try {
-                                  await updateSubaccount(subaccountCode, 0);
-                                  subaccountUpdated = true;
-                              } catch (e) {
-                                  console.warn("Failed to update existing subaccount percentage, might need to create new one.", e);
+                                  const updated = await updateSubaccount(subaccountCode, 0);
+                                  if (updated) {
+                                      subaccountUpdated = true;
+                                  } else {
+                                      // It returned null because it didn't exist (e.g. old test code)
+                                      console.log("Subaccount not found, proceeding to create newly.");
+                                  }
+                              } catch (e: any) {
+                                  console.warn("Failed to update existing subaccount percentage.", e);
+                                  return { error: e.message || "Failed to sync subaccount with Paystack." };
                               }
                           }
 
                           // If no subaccount code OR update failed (maybe invalid code), create/re-create
                           if (!subaccountCode || !subaccountUpdated) {
-                              const subaccount = await createSubaccount(
-                                  company.name,
-                                  primaryBank.bankCode,
-                                  primaryBank.accountNumber,
-                                  0 // Force 0%
-                              );
-                              
-                              if (subaccount && subaccount.subaccount_code) {
-                                  subaccountCode = subaccount.subaccount_code;
+                              try {
+                                  const subaccount = await createSubaccount(
+                                      company.name,
+                                      primaryBank.bankCode,
+                                      primaryBank.accountNumber,
+                                      0 // Force 0%
+                                  );
+
+                                  if (subaccount && subaccount.subaccount_code) {
+                                      subaccountCode = subaccount.subaccount_code;
+                                  } else {
+                                      return { error: "Paystack returned an invalid subaccount response." };
+                                  }
+                              } catch (err: any) {
+                                  console.error("Failed to create/update Paystack subaccount:", err);
+                                  return { error: err.message || "Failed to verify bank account with Paystack. Please check Account Number and Bank." };
                               }
                           }
-                      } catch (err) {
-                          console.error("Failed to create/update Paystack subaccount:", err);
-                          // We don't fail the whole update, but maybe warn?
+                      } catch (globalErr: any) {
+                          console.error("Unexpected error in Paystack subaccount flow:", globalErr);
+                          return { error: "An unexpected error occurred while setting up payment." };
                       }
                  }
 
@@ -132,4 +145,44 @@ function hasBankDetailsChanged(oldBanks: any[], newBanks: any[]) {
 export async function getBanksList() {
     const { getBanks } = await import("@/lib/paystack");
     return await getBanks();
+}
+
+export async function getUserProfile() {
+    const session = await auth();
+    if (!session?.user?.id) return null;
+
+    try {
+        await connectDB();
+        const User = (await import("@/models/User")).default;
+        const user = await User.findById(session.user.id).lean() as any;
+        if (!user) return null;
+
+        let bankAccounts = [];
+        if (user.role === 'COMPANY_ADMIN' && user.companyId) {
+            const TransportCompany = (await import("@/models/TransportCompany")).default;
+            const company = await TransportCompany.findById(user.companyId).lean() as any;
+            if (company && company.bankAccounts) {
+                bankAccounts = company.bankAccounts;
+            }
+        } else {
+             bankAccounts = user.bankAccounts || [];
+        }
+
+        const serializedBankAccounts = bankAccounts.map((acc: any) => ({
+             bankName: acc.bankName,
+             accountNumber: acc.accountNumber,
+             accountName: acc.accountName,
+             bankCode: acc.bankCode
+        }));
+
+        return {
+            name: user.name,
+            phoneNumber: user.phoneNumber,
+            role: user.role,
+            bankAccounts: serializedBankAccounts
+        };
+    } catch (error) {
+        console.error("Failed to fetch user profile", error);
+        return null;
+    }
 }

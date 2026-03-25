@@ -278,26 +278,15 @@ export default function SignupPage() {
                 />
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                     <FormLabel className="text-base font-semibold">Bank Accounts</FormLabel>
-                     <Button type="button" variant="outline" size="sm" onClick={() => append({ bankName: "", accountNumber: "", accountName: "" })}>
-                        <Plus className="h-4 w-4 mr-1" /> Add Account
-                     </Button>
+                  <div className="flex items-center justify-between mt-6">
+                     <div className="space-y-1">
+                        <FormLabel className="text-base font-semibold text-gray-900">Primary Payout Bank Account</FormLabel>
+                        <p className="text-xs text-gray-500 font-medium">This account will be used to receive your trip payouts automatically. You can always change this later in your Profile Settings.</p>
+                     </div>
                   </div>
                   
                   {fields.map((field, index) => (
-                    <div key={field.id} className="p-3 bg-gray-50 rounded-md space-y-3 relative group">
-                        {index > 0 && (
-                            <Button 
-                                type="button" 
-                                variant="ghost" 
-                                size="icon" 
-                                className="absolute top-2 right-2 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => remove(index)}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        )}
+                    <div key={field.id} className="p-3 bg-gray-50 rounded-md space-y-3 relative group border">
                         <FormField
                             control={form.control}
                             name={`bankAccounts.${index}.bankName`}

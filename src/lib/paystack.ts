@@ -101,6 +101,11 @@ export async function updateSubaccount(subaccountCode: string, percentageCharge:
         });
         return response.data.data;
     } catch (error: any) {
+        // If the error is simply that the subaccount does not exist (e.g. it was a test code on a live key), return null
+        if (error.response?.status === 404 || error.response?.data?.code === 'not_found' || error.response?.data?.message === 'Subaccount not found') {
+            console.warn(`Subaccount ${subaccountCode} not found (might be an old test subaccount).`);
+            return null;
+        }
         console.error("Error updating subaccount:", error.response?.data || error.message);
         throw new Error(error.response?.data?.message || "Failed to update Paystack subaccount");
     }
